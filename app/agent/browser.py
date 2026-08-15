@@ -5,6 +5,7 @@ from app.agent.mcp import MCPAgent
 from app.logger import logger
 from app.prompt.browser import NEXT_STEP_PROMPT
 from app.schema import Message
+from app.tool.terminate import Terminate
 
 
 # Avoid circular import if BrowserAgent needs BrowserContextHelper
@@ -87,7 +88,8 @@ class BrowserAgent(MCPAgent):
     system_prompt: str = """\
 Use Browser Use CLI 3.0 through `browser_exec`. Pass the Python body from CLI
 examples as the `code` argument. Use `browser_screenshot` when visual context
-is needed. The browser-harness session persists across calls.
+is needed. The browser-harness session persists across calls. Use `terminate`
+when the task is complete.
 """
 
     async def initialize(self) -> None:
@@ -98,6 +100,7 @@ is needed. The browser-harness session persists across calls.
             server_id="browser_use",
             tool_name_prefix=False,
         )
+        self.available_tools.add_tool(Terminate())
 
     @classmethod
     async def create(cls, **kwargs) -> "BrowserAgent":
