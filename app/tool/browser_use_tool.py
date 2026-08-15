@@ -165,8 +165,9 @@ class BrowserUseTool(BaseTool, Generic[Context]):
         if command is None:
             return ToolResult(
                 error=(
-                    "Browser Use CLI is unavailable. Install uv, then run "
-                    "`uv tool install browser-use`."
+                    "Browser Use CLI is unavailable. Install uv, run "
+                    "`uv tool install browser-use`, then verify it with "
+                    "`browser-use --doctor`."
                 )
             )
 

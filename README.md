@@ -83,7 +83,41 @@ source .venv/bin/activate  # On Unix/macOS
 uv pip install -r requirements.txt
 ```
 
-### Browser Automation Tool (Optional)
+### Browser automation
+
+OpenManus uses the Browser Use CLI 3.0 through `uvx`, so the first browser
+tool call downloads the current CLI into an isolated environment. No
+`browser-use` SDK dependency is added to the OpenManus environment.
+
+For a persistent CLI install, run:
+
+```bash
+uv tool install browser-use
+export BROWSER_USE_BIN="$(uv tool dir --bin)/browser-use"
+"$BROWSER_USE_BIN" --doctor
+```
+
+The default path controls local Chrome or Chromium and needs no Browser Use
+API key. If no browser is installed, provision Chromium with:
+
+```bash
+uvx browser-use install
+```
+
+For an isolated Browser Use Cloud browser, set an API key and enable cloud
+autospawn:
+
+```bash
+export BROWSER_USE_API_KEY="bu_..."
+export BU_AUTOSPAWN=1
+```
+
+Alternatively, setting `headless = true` under `[browser]` enables cloud
+autospawn when `BROWSER_USE_API_KEY` is present. Existing remote browsers can
+be selected with `cdp_url` or `wss_url` in `config/config.toml`.
+
+BrowserGym still requires its Playwright browser:
+
 ```bash
 playwright install
 ```

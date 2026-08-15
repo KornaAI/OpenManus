@@ -49,18 +49,19 @@ temperature = 0.0                          # Controls randomness for vision mode
 
 # Optional configuration for specific browser configuration
 # [browser]
-# Whether to run browser in headless mode (default: false)
+# Browser Use CLI 3.0 controls local Chrome/Chromium by default.
+# With BROWSER_USE_API_KEY set, headless=true opts into Browser Use Cloud.
 #headless = false
 # Disable browser security features (default: true)
 #disable_security = true
 # Extra arguments to pass to the browser
 #extra_chromium_args = []
-# Path to a Chrome instance to use to connect to your normal browser
+# Path to a local Chrome/Chromium executable
 # e.g. '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 #chrome_instance_path = ""
-# Connect to a browser instance via WebSocket
+# Connect Browser Use CLI 3.0 to an existing browser via WebSocket
 #wss_url = ""
-# Connect to a browser instance via CDP
+# Connect Browser Use CLI 3.0 to an existing HTTP CDP endpoint
 #cdp_url = ""
 
 # Optional configuration, Proxy settings for the browser
