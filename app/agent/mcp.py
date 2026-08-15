@@ -43,6 +43,8 @@ class MCPAgent(ToolCallAgent):
         server_url: Optional[str] = None,
         command: Optional[str] = None,
         args: Optional[List[str]] = None,
+        server_id: str = "",
+        tool_name_prefix: bool = True,
     ) -> None:
         """Initialize the MCP connection.
 
@@ -59,11 +61,18 @@ class MCPAgent(ToolCallAgent):
         if self.connection_type == "sse":
             if not server_url:
                 raise ValueError("Server URL is required for SSE connection")
-            await self.mcp_clients.connect_sse(server_url=server_url)
+            await self.mcp_clients.connect_sse(
+                server_url=server_url, server_id=server_id
+            )
         elif self.connection_type == "stdio":
             if not command:
                 raise ValueError("Command is required for stdio connection")
-            await self.mcp_clients.connect_stdio(command=command, args=args or [])
+            await self.mcp_clients.connect_stdio(
+                command=command,
+                args=args or [],
+                server_id=server_id,
+                tool_name_prefix=tool_name_prefix,
+            )
         else:
             raise ValueError(f"Unsupported connection type: {self.connection_type}")
 
@@ -76,11 +85,18 @@ class MCPAgent(ToolCallAgent):
         # Add system message about available tools
         tool_names = list(self.mcp_clients.tool_map.keys())
         tools_info = ", ".join(tool_names)
+        resolved_server_id = server_id or command or server_url or ""
+        instructions = self.mcp_clients.server_instructions.get(resolved_server_id, "")
 
         # Add system prompt and available tools information
         self.memory.add_message(
             Message.system_message(
                 f"{self.system_prompt}\n\nAvailable MCP tools: {tools_info}"
+                + (
+                    f"\n\nMCP server instructions:\n{instructions}"
+                    if instructions
+                    else ""
+                )
             )
         )
 

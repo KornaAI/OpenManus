@@ -1,18 +1,29 @@
+import os
 from typing import Dict, List, Optional
 
-from pydantic import Field, model_validator
+from pydantic import Field
 
-from app.agent.browser import BrowserContextHelper
 from app.agent.toolcall import ToolCallAgent
 from app.config import config
 from app.logger import logger
 from app.prompt.manus import NEXT_STEP_PROMPT, SYSTEM_PROMPT
+from app.schema import Message
 from app.tool import Terminate, ToolCollection
 from app.tool.ask_human import AskHuman
-from app.tool.browser_use_tool import BrowserUseTool
 from app.tool.mcp import MCPClients, MCPClientTool
 from app.tool.python_execute import PythonExecute
 from app.tool.str_replace_editor import StrReplaceEditor
+
+
+_BROWSER_USE_SERVER_ID = "browser_use"
+_BROWSER_USE_COMMAND = "uvx"
+_BROWSER_USE_ARGS = ["browser-use", "--cli-mcp"]
+_BROWSER_USE_TRANSPORT_INSTRUCTIONS = """\
+Browser Use CLI 3.0 is exposed here as MCP tools. When the Browser Use skill
+shows `browser-use <<'PY'`, pass the Python body to `browser_exec` instead.
+Use `browser_screenshot` when visual inspection is needed. Both tools use the
+same persistent browser-harness session as CLI 3.0.
+"""
 
 
 class Manus(ToolCallAgent):
@@ -34,7 +45,6 @@ class Manus(ToolCallAgent):
     available_tools: ToolCollection = Field(
         default_factory=lambda: ToolCollection(
             PythonExecute(),
-            BrowserUseTool(),
             StrReplaceEditor(),
             AskHuman(),
             Terminate(),
@@ -42,19 +52,13 @@ class Manus(ToolCallAgent):
     )
 
     special_tool_names: list[str] = Field(default_factory=lambda: [Terminate().name])
-    browser_context_helper: Optional[BrowserContextHelper] = None
 
     # Track connected MCP servers
     connected_servers: Dict[str, str] = Field(
         default_factory=dict
     )  # server_id -> url/command
+    mcp_instruction_servers: set[str] = Field(default_factory=set, exclude=True)
     _initialized: bool = False
-
-    @model_validator(mode="after")
-    def initialize_helper(self) -> "Manus":
-        """Initialize basic components synchronously."""
-        self.browser_context_helper = BrowserContextHelper(self)
-        return self
 
     @classmethod
     async def create(cls, **kwargs) -> "Manus":
@@ -66,6 +70,21 @@ class Manus(ToolCallAgent):
 
     async def initialize_mcp_servers(self) -> None:
         """Initialize connections to configured MCP servers."""
+        if _BROWSER_USE_SERVER_ID not in config.mcp_config.servers and os.getenv(
+            "OPENMANUS_DISABLE_BROWSER_USE", ""
+        ).lower() not in {"1", "true", "yes"}:
+            try:
+                await self.connect_mcp_server(
+                    _BROWSER_USE_COMMAND,
+                    _BROWSER_USE_SERVER_ID,
+                    use_stdio=True,
+                    stdio_args=_BROWSER_USE_ARGS,
+                    tool_name_prefix=False,
+                )
+                logger.info("Connected to Browser Use CLI 3.0 through MCP")
+            except Exception as e:
+                logger.error(f"Failed to connect to Browser Use CLI 3.0: {e}")
+
         for server_id, server_config in config.mcp_config.servers.items():
             try:
                 if server_config.type == "sse":
@@ -81,6 +100,7 @@ class Manus(ToolCallAgent):
                             server_id,
                             use_stdio=True,
                             stdio_args=server_config.args,
+                            tool_name_prefix=server_id != _BROWSER_USE_SERVER_ID,
                         )
                         logger.info(
                             f"Connected to MCP server {server_id} using command {server_config.command}"
@@ -93,12 +113,16 @@ class Manus(ToolCallAgent):
         server_url: str,
         server_id: str = "",
         use_stdio: bool = False,
-        stdio_args: List[str] = None,
+        stdio_args: Optional[List[str]] = None,
+        tool_name_prefix: bool = True,
     ) -> None:
         """Connect to an MCP server and add its tools."""
         if use_stdio:
             await self.mcp_clients.connect_stdio(
-                server_url, stdio_args or [], server_id
+                server_url,
+                stdio_args or [],
+                server_id,
+                tool_name_prefix=tool_name_prefix,
             )
             self.connected_servers[server_id or server_url] = server_url
         else:
@@ -110,6 +134,21 @@ class Manus(ToolCallAgent):
             tool for tool in self.mcp_clients.tools if tool.server_id == server_id
         ]
         self.available_tools.add_tools(*new_tools)
+
+        resolved_server_id = server_id or server_url
+        instructions = self.mcp_clients.server_instructions.get(resolved_server_id)
+        if instructions and resolved_server_id not in self.mcp_instruction_servers:
+            transport_instructions = (
+                f"{_BROWSER_USE_TRANSPORT_INSTRUCTIONS}\n"
+                if resolved_server_id == _BROWSER_USE_SERVER_ID
+                else ""
+            )
+            self.memory.add_message(
+                Message.system_message(
+                    f"{transport_instructions}MCP server instructions:\n{instructions}"
+                )
+            )
+            self.mcp_instruction_servers.add(resolved_server_id)
 
     async def disconnect_mcp_server(self, server_id: str = "") -> None:
         """Disconnect from an MCP server and remove its tools."""
@@ -130,8 +169,6 @@ class Manus(ToolCallAgent):
 
     async def cleanup(self):
         """Clean up Manus agent resources."""
-        if self.browser_context_helper:
-            await self.browser_context_helper.cleanup_browser()
         # Disconnect from all MCP servers only if we were initialized
         if self._initialized:
             await self.disconnect_mcp_server()
@@ -143,23 +180,4 @@ class Manus(ToolCallAgent):
             await self.initialize_mcp_servers()
             self._initialized = True
 
-        original_prompt = self.next_step_prompt
-        recent_messages = self.memory.messages[-3:] if self.memory.messages else []
-        browser_in_use = any(
-            tc.function.name == BrowserUseTool().name
-            for msg in recent_messages
-            if msg.tool_calls
-            for tc in msg.tool_calls
-        )
-
-        if browser_in_use:
-            self.next_step_prompt = (
-                await self.browser_context_helper.format_next_step_prompt()
-            )
-
-        result = await super().think()
-
-        # Restore original prompt
-        self.next_step_prompt = original_prompt
-
-        return result
+        return await super().think()

@@ -85,36 +85,34 @@ uv pip install -r requirements.txt
 
 ### Browser automation
 
-OpenManus uses the Browser Use CLI 3.0 through `uvx`, so the first browser
-tool call downloads the current CLI into an isolated environment. No
-`browser-use` SDK dependency is added to the OpenManus environment.
-
-For a persistent CLI install, run:
+OpenManus starts Browser Use CLI 3.0 as a default MCP server:
 
 ```bash
-uv tool install browser-use
-export BROWSER_USE_BIN="$(uv tool dir --bin)/browser-use"
-"$BROWSER_USE_BIN" --doctor
+uvx browser-use --cli-mcp
 ```
 
-The default path controls local Chrome or Chromium and needs no Browser Use
-API key. If no browser is installed, provision Chromium with:
+`uvx` keeps Browser Use and its fast-moving dependencies isolated from the
+OpenManus environment. The agent receives the canonical Browser Use skill and
+the native `browser_exec` and `browser_screenshot` tools.
+
+Local mode attaches to Chrome or Chromium automatically and needs no API key.
+For diagnostics or to install Chromium, run:
 
 ```bash
+uvx browser-use --doctor
 uvx browser-use install
 ```
 
-For an isolated Browser Use Cloud browser, set an API key and enable cloud
-autospawn:
+For an isolated Browser Use Cloud browser, authenticate before starting
+OpenManus. The agent can then start and select a named remote browser:
 
 ```bash
 export BROWSER_USE_API_KEY="bu_..."
-export BU_AUTOSPAWN=1
 ```
 
-Alternatively, setting `headless = true` under `[browser]` enables cloud
-autospawn when `BROWSER_USE_API_KEY` is present. Existing remote browsers can
-be selected with `cdp_url` or `wss_url` in `config/config.toml`.
+Existing browsers can be selected with `BU_CDP_URL`, `BU_CDP_WS`, or `BU_NAME`.
+Set `OPENMANUS_DISABLE_BROWSER_USE=1` to disable the default Browser Use MCP
+server.
 
 BrowserGym still requires its Playwright browser:
 
