@@ -4,9 +4,8 @@ from pydantic import Field
 
 from app.agent.toolcall import ToolCallAgent
 from app.logger import logger
-from app.prompt.mcp import MULTIMEDIA_RESPONSE_PROMPT, NEXT_STEP_PROMPT, SYSTEM_PROMPT
+from app.prompt.mcp import NEXT_STEP_PROMPT, SYSTEM_PROMPT
 from app.schema import AgentState, Message
-from app.tool.base import ToolResult
 from app.tool.mcp import MCPClients
 
 
@@ -166,19 +165,6 @@ class MCPAgent(ToolCallAgent):
 
         # Use the parent class's think method
         return await super().think()
-
-    async def _handle_special_tool(self, name: str, result: Any, **kwargs) -> None:
-        """Handle special tool execution and state changes"""
-        # First process with parent handler
-        await super()._handle_special_tool(name, result, **kwargs)
-
-        # Handle multimedia responses
-        if isinstance(result, ToolResult) and result.base64_image:
-            self.memory.add_message(
-                Message.system_message(
-                    MULTIMEDIA_RESPONSE_PROMPT.format(tool_name=name)
-                )
-            )
 
     def _should_finish_execution(self, name: str, **kwargs) -> bool:
         """Determine if tool execution should finish the agent"""

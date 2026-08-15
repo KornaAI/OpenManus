@@ -16,7 +16,11 @@ if _CREATED_TEST_CONFIG:
 
 try:
     from app.agent import manus as manus_module
+    from app.agent.toolcall import ToolCallAgent
+    from app.schema import Function, ToolCall
+    from app.tool.base import BaseTool, ToolResult
     from app.tool.mcp import MCPClients, MCPClientTool
+    from app.tool.tool_collection import ToolCollection
 finally:
     if _CREATED_TEST_CONFIG:
         _CONFIG_PATH.unlink()
@@ -48,6 +52,15 @@ class FakeSession(ClientSession):
 
     async def call_tool(self, name, arguments):
         return SimpleNamespace(content=self.content)
+
+
+class ImageTool(BaseTool):
+    name: str = "image_tool"
+    description: str = "Return an image"
+    parameters: dict = {"type": "object"}
+
+    async def execute(self, **kwargs):
+        return ToolResult(output="image ready", base64_image="cG5n")
 
 
 @pytest.mark.asyncio
@@ -82,6 +95,25 @@ async def test_mcp_forwards_text_and_screenshot_content():
 
     assert result.output == "done"
     assert result.base64_image == "cG5n"
+
+
+@pytest.mark.asyncio
+async def test_tool_images_follow_the_tool_result_as_user_messages():
+    agent = ToolCallAgent(available_tools=ToolCollection(ImageTool()))
+    agent.tool_calls = [
+        ToolCall(
+            id="call_1",
+            function=Function(name="image_tool", arguments="{}"),
+        )
+    ]
+
+    await agent.act()
+
+    tool_message, image_message = agent.memory.messages
+    assert getattr(tool_message.role, "value", tool_message.role) == "tool"
+    assert tool_message.base64_image is None
+    assert getattr(image_message.role, "value", image_message.role) == "user"
+    assert image_message.base64_image == "cG5n"
 
 
 @pytest.mark.asyncio
