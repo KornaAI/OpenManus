@@ -124,6 +124,9 @@ async def test_manus_enables_cli_mcp_by_default(monkeypatch):
         calls.append((args, kwargs))
 
     monkeypatch.delenv("OPENMANUS_DISABLE_BROWSER_USE", raising=False)
+    monkeypatch.setenv("BROWSER_USE_API_KEY", "bu_test")
+    monkeypatch.setenv("BU_CDP_URL", "http://127.0.0.1:9237")
+    monkeypatch.setenv("OPENAI_API_KEY", "must-not-be-forwarded")
     monkeypatch.setattr(manus_module.config.mcp_config, "servers", {})
     monkeypatch.setattr(manus_module.Manus, "connect_mcp_server", record_connection)
 
@@ -136,6 +139,10 @@ async def test_manus_enables_cli_mcp_by_default(monkeypatch):
                 "use_stdio": True,
                 "stdio_args": ["browser-use", "--cli-mcp"],
                 "tool_name_prefix": False,
+                "stdio_env": {
+                    "BROWSER_USE_API_KEY": "bu_test",
+                    "BU_CDP_URL": "http://127.0.0.1:9237",
+                },
             },
         )
     ]

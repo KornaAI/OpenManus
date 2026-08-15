@@ -18,12 +18,24 @@ from app.tool.str_replace_editor import StrReplaceEditor
 _BROWSER_USE_SERVER_ID = "browser_use"
 _BROWSER_USE_COMMAND = "uvx"
 _BROWSER_USE_ARGS = ["browser-use", "--cli-mcp"]
+_BROWSER_USE_ENV_VARS = (
+    "BROWSER_USE_API_KEY",
+    "BROWSER_USE_CLOUD_API_URL",
+    "BU_BROWSER_ID",
+    "BU_CDP_URL",
+    "BU_CDP_WS",
+    "BU_NAME",
+)
 _BROWSER_USE_TRANSPORT_INSTRUCTIONS = """\
 Browser Use CLI 3.0 is exposed here as MCP tools. When the Browser Use skill
 shows `browser-use <<'PY'`, pass the Python body to `browser_exec` instead.
 Use `browser_screenshot` when visual inspection is needed. Both tools use the
 same persistent browser-harness session as CLI 3.0.
 """
+
+
+def _browser_use_env() -> Dict[str, str]:
+    return {name: value for name in _BROWSER_USE_ENV_VARS if (value := os.getenv(name))}
 
 
 class Manus(ToolCallAgent):
@@ -80,6 +92,7 @@ class Manus(ToolCallAgent):
                     use_stdio=True,
                     stdio_args=_BROWSER_USE_ARGS,
                     tool_name_prefix=False,
+                    stdio_env=_browser_use_env(),
                 )
                 logger.info("Connected to Browser Use CLI 3.0 through MCP")
             except Exception as e:
@@ -101,6 +114,11 @@ class Manus(ToolCallAgent):
                             use_stdio=True,
                             stdio_args=server_config.args,
                             tool_name_prefix=server_id != _BROWSER_USE_SERVER_ID,
+                            stdio_env=(
+                                _browser_use_env()
+                                if server_id == _BROWSER_USE_SERVER_ID
+                                else None
+                            ),
                         )
                         logger.info(
                             f"Connected to MCP server {server_id} using command {server_config.command}"
@@ -115,6 +133,7 @@ class Manus(ToolCallAgent):
         use_stdio: bool = False,
         stdio_args: Optional[List[str]] = None,
         tool_name_prefix: bool = True,
+        stdio_env: Optional[Dict[str, str]] = None,
     ) -> None:
         """Connect to an MCP server and add its tools."""
         if use_stdio:
@@ -123,6 +142,7 @@ class Manus(ToolCallAgent):
                 stdio_args or [],
                 server_id,
                 tool_name_prefix=tool_name_prefix,
+                env=stdio_env,
             )
             self.connected_servers[server_id or server_url] = server_url
         else:

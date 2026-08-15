@@ -90,6 +90,7 @@ class MCPClients(ToolCollection):
         args: List[str],
         server_id: str = "",
         tool_name_prefix: bool = True,
+        env: Optional[Dict[str, str]] = None,
     ) -> None:
         """Connect to an MCP server using stdio transport."""
         if not command:
@@ -104,7 +105,7 @@ class MCPClients(ToolCollection):
         exit_stack = AsyncExitStack()
         self.exit_stacks[server_id] = exit_stack
 
-        server_params = StdioServerParameters(command=command, args=args)
+        server_params = StdioServerParameters(command=command, args=args, env=env)
         stdio_transport = await exit_stack.enter_async_context(
             stdio_client(server_params)
         )
