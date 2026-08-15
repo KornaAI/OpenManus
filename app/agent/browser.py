@@ -86,7 +86,7 @@ class BrowserContextHelper:
 
 class BrowserAgent(ToolCallAgent):
     """
-    A browser agent that uses the browser_use library to control a browser.
+    A browser agent that uses Browser Use CLI 3.0 to control a browser.
 
     This agent can navigate web pages, interact with elements, fill forms,
     extract content, and perform other browser-based actions to accomplish tasks.

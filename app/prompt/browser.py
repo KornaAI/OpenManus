@@ -80,12 +80,15 @@ When you see [Current state starts here], focus on the following:
 - Content above{content_above_placeholder} or below{content_below_placeholder} the viewport (if indicated)
 - Any action results or errors{results_placeholder}
 
-For browser interactions:
-- To navigate: browser_use with action="go_to_url", url="..."
-- To click: browser_use with action="click_element", index=N
-- To type: browser_use with action="input_text", index=N, text="..."
-- To extract: browser_use with action="extract_content", goal="..."
-- To scroll: browser_use with action="scroll_down" or "scroll_up"
+For browser interactions, call browser_use with Python in `code`. Browser Use
+CLI 3.0 keeps the browser session alive across calls and pre-imports helpers:
+- Navigate: `new_tab("https://example.com"); wait_for_load()`
+- Inspect: `print(page_info())`, `print(list_tabs())`, or `print(js("..."))`
+- Interact: `click_at_xy(x, y)`, `fill_input(selector, text)`, `press_key(key)`
+- Capture: `print(capture_screenshot())`
+
+Print any state that you need returned. Prefer accessibility-tree or DOM
+inspection before coordinate clicks.
 
 Consider both what's visible and what might be beyond the current viewport.
 Be methodical - remember your progress and what you've learned so far.
