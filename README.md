@@ -83,7 +83,39 @@ source .venv/bin/activate  # On Unix/macOS
 uv pip install -r requirements.txt
 ```
 
-### Browser Automation Tool (Optional)
+### Browser automation
+
+OpenManus starts Browser Use CLI 3.0 as a default MCP server:
+
+```bash
+uvx browser-use --cli-mcp
+```
+
+`uvx` keeps Browser Use and its fast-moving dependencies isolated from the
+OpenManus environment. The agent receives the canonical Browser Use skill and
+the native `browser_exec` and `browser_screenshot` tools.
+
+Local mode attaches to Chrome or Chromium automatically and needs no API key.
+For diagnostics or to install Chromium, run:
+
+```bash
+uvx browser-use --doctor
+uvx browser-use install
+```
+
+For an isolated Browser Use Cloud browser, authenticate before starting
+OpenManus. The agent can then start and select a named remote browser:
+
+```bash
+export BROWSER_USE_API_KEY="bu_..."
+```
+
+Existing browsers can be selected with `BU_CDP_URL`, `BU_CDP_WS`, or `BU_NAME`.
+Set `OPENMANUS_DISABLE_BROWSER_USE=1` to disable the default Browser Use MCP
+server.
+
+BrowserGym still requires its Playwright browser:
+
 ```bash
 playwright install
 ```
